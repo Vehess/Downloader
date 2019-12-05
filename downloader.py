@@ -4,12 +4,26 @@ from bs4 import BeautifulSoup
 import re
 # TODO ==> pip install wget
 import wget
+import argparse
+
+#TODO : ajouter un mode verbose pour debug
+#https://docs.python.org/fr/3/howto/argparse.html
+parser = argparse.ArgumentParser()
+parser.add_argument("-v", "--verbose", help="increase output verbosity",
+                    action="store_true")
+args = parser.parse_args()
+
+if args.verbosity:
+    print("verbosity turned on")
+
 
 http = urllib3.PoolManager()
+print(http)
 # TODO ==> ajouter choix de l'adresse web
 r = http.request('GET', 'http://rendezvousavecmrx.free.fr/page/liste.php')
 soup = BeautifulSoup(r.data, 'lxml')
 
+#plein de variables bien inutiles! :-)
 lien = 0
 nom = 0
 link = []
@@ -21,8 +35,8 @@ print("#### je me lance ####")
 
 mp3_files_info = []
 
-LINK_FMT = "http://rendezvousavecmrx.free.fr/audio/%s"
-DOWNLOAD_PATH = "./download"
+LINK_FMT = "http://rendezvousavecmrx.free.fr/audio/%s" #TODO : trouver un moyen de rendre ce choix dynamique
+DOWNLOAD_PATH = "./download"                           #TODO : trouver un moyen de rendre ce choix dynamique
 DOWNLOAD_PATH_FMT = DOWNLOAD_PATH + "/%s"
 
 # Definition des nom pour les group a matcher par expression reguliere
@@ -46,6 +60,7 @@ REGEXP_MATCH_MP3_FILE       = r"<a[^>]*href=\"(?P<%s>[^\"]*audio/(?P<%s>(.*\.mp3
 mp3_file_match_pattern = re.compile(REGEXP_MATCH_MP3_FILE)
 
 # classe contenant les informations d'un fichier mp3
+# TODO => Renommer la classe pour tout type de fichier, pas que mp3
 class MP3_file_data(object):
     # constructeur
     def __init__(self, i_link, i_file_name, i_alt, i_title):
@@ -79,7 +94,8 @@ for a in soup.findAll('a'):
     #    link.append(a.get('href'[2:]))
     #    print (a.get('href'))#retourne les liens
     #    lien = lien + 1
-    for m in mp3_file_match_pattern.finditer(unicode(a)):
+    #TODO : si python 2 => unicode, si python 3 => str.
+    for m in mp3_file_match_pattern.finditer(str(a)):
         try:
             #link        = m.group(REGEXP_LINK_GROUP_NAME) # en fait le lien lu est du type ../audio/xxxx et non pas "http://rendezvousavecmrx.free.fr/audio/xxxx" alors lien refait a partir du nom du fichier
             file_name   = m.group(REGEXP_FILE_NAME_GROUP_NAME) 
@@ -101,6 +117,7 @@ if not os.path.isdir(DOWNLOAD_PATH):
 for mp3_file in mp3_files_info:
     # TODO clean des fichiers tmp en cas d'erreur + mettre les tmp dans un autre repertoire
     print("##### Download file '%s' ######" % mp3_file.name())
+    #WARNING : pas d'affichage de la barre de progression.. (thonny, python 3.7.5)
     file_name = wget.download(mp3_file.url(), DOWNLOAD_PATH_FMT % mp3_file.name())
     print("")
     #print(file_name)
@@ -124,12 +141,9 @@ print("#### j'ai fini ####")
 length = len(link)
 for i in range(length):
     print("Le liens " + link[i] +" correspond a "+ name[i+4])
-
-
 name_link = zip(name, link)
 print("Printing name_link")
 print(name_link)
-
 for name, link in name_link:
     print('Downloading %s' % link)
     os.system("wget -cO - %s > %s.mp3".format(link,name))
